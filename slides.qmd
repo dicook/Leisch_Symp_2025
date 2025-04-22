@@ -1,0 +1,587 @@
+---
+title: "Interactively Visualizing Multivariate Market Segmentation Using the R Package Lionfish"
+author: "Dianne Cook <br> Econometrics and Business Statistics <br> Monash University <br> Joint with Ursula Laa and Matthias Medl, BOKU"
+format:
+  revealjs: 
+    theme: 
+      - default
+      - custom.scss
+    slide-number: c/t
+    slide-tone: false
+    width: 1280
+    height: 800
+    margin: 0.05
+    chalkboard: true
+    background-transition: fade
+code-line-numbers: false
+message: false
+highlight-style: pygments
+html-math-method: mathml
+code-fold: true
+footer: "Symposium in Memory of Fritz Leisch - https://dicook.github.io/Leisch_Symp_2025/"
+---
+
+```{r, include = FALSE}
+library(tidyverse)
+library(colorspace)
+library(patchwork)
+library(tourr)
+library(mvtnorm)
+library(lionfish)
+data("risk")
+colnames(risk) <- c("Rec", "Hea", "Car", "Fin", "Saf", "Soc")
+
+options(width = 200)
+knitr::opts_chunk$set(
+  fig.width = 4,
+  fig.height = 4,
+  out.width = "80%",
+  fig.align = "center",
+  dev.args = list(bg = 'transparent'),
+  fig.retina = 3,
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  cache = FALSE
+)
+theme_set(ggthemes::theme_gdocs(base_size = 12) +
+  theme(plot.background = 
+        element_rect(fill = 'transparent', colour = NA),
+        axis.line.x = element_line(color = "black", 
+                                   linetype = "solid"),
+        axis.line.y = element_line(color = "black", 
+                                   linetype = "solid"),
+        plot.title.position = "plot",
+        plot.title = element_text(size = 18),
+        panel.background  = 
+          element_rect(fill = 'transparent', colour = "black"),
+        legend.background = 
+          element_rect(fill = 'transparent', colour = NA),
+        legend.key        = 
+          element_rect(fill = 'transparent', colour = NA)
+  ) 
+)
+```
+
+## Fritz's work 
+
+:::: {.columns}
+::: {.column width=70%}
+<br>
+<br>
+It turns out that Fritz implemented a tour:
+
+```{r}
+#| code-fold: false
+#| eval: false
+library(flexclust)
+randomTour(iris[,1:4], axiscol=2:5)
+```
+
+::: {.fragment}
+<br>
+<br>
+Today's work extends it with better algorithms for choosing projections to show, and interactive graphics where plots are linked in python.
+:::
+:::
+::: {.column width=10%}
+:::
+::: {.column width=20%}
+![](https://boku.ac.at/fileadmin/_processed_/d/f/csm_FriedrichLeisch_Nachruf_ee94aff500.png)
+
+:::
+::::
+
+## Motivation
+
+:::: {.columns}
+::: {.column width=60%}
+
+"*You can get any result you want when clustering data.*"
+
+::: {.fragment}
+Yes, and **no, ideally no**
+:::
+
+::: {.fragment}
+<br>
+Market segmentation tends to be carving a "blob" of data into chunks, using clustering algorithms. We argue that:
+
+- *Clustering follows the shape of the data along mathematical rules*
+- *Algorithms have favourites and quirks, which is replicable and repeatable* 
+:::
+:::
+
+::: {.column width=40%}
+
+::: {layout-ncol=3}
+
+![](images/apple1.jpg)
+![](images/apple2.jpg)
+![](images/apple3.jpg)
+
+![](images/banana1.jpg)
+![](images/banana2.jpg)
+![](images/banana3.jpg)
+
+:::
+:::
+::::
+
+## Objective
+
+:::: {.columns}
+::: {.column width=20%}
+:::
+
+::: {.column width=80%}
+<br><br>
+Learn about the shape of the data and how a clustering has carved up the data ...
+
+::: {.fragment}
+<br><br>
+... by using tours - linear projections of high-dimensional data.
+:::
+:::
+::::
+
+## Quick quiz 
+
+:::: {.columns}
+::: {.column}
+
+This is how we tend to visualise cluster results. 
+
+```{r}
+#| echo: false
+#| fig-width: 9
+#| fig-height: 3
+#| out-width: 100%
+f_std <- function(x) {(x-min(x))/(max(x)-min(x))}
+set.seed(914)
+blob1 <- rmvnorm(n=155, mean=c(0,0), 
+                 sigma=matrix(c(1, 0, 0, 1), 
+                              ncol=2, byrow=TRUE)) |> 
+  as_tibble() |>
+  mutate_all(f_std)
+blob2 <- rmvnorm(n=155, mean=c(0,0), 
+                 sigma=matrix(c(1, 0.6, 0.6, 1), 
+                              ncol=2, byrow=TRUE)) |> 
+  as_tibble() |>
+  mutate_all(f_std)
+blob3 <- rmvnorm(n=155, mean=c(0,0), 
+                 sigma=matrix(c(1, 0.9, 0.9, 1), 
+                              ncol=2, byrow=TRUE)) |> 
+  as_tibble() |>
+  mutate_all(f_std)
+set.seed(855)
+b1_km <- kmeans(blob1, 4)
+b2_km <- kmeans(blob2, 4)
+b3_km <- kmeans(blob3, 4)
+blob1_cl <- blob1 |>
+  mutate(cl = factor(b1_km$cluster))
+blob2_cl <- blob2 |>
+  mutate(cl = factor(b2_km$cluster))
+blob3_cl <- blob3 |>
+  mutate(cl = factor(b3_km$cluster))
+b4 <- ggplot(blob1_cl, aes(V1, V2, colour=cl)) + 
+  geom_point() +
+  scale_color_discrete_divergingx(palette="Zissou 1") +
+  #annotate("text", x=0.05, y=0.95, label="A", size=8) +
+  theme(legend.position = "none", 
+        axis.text = element_blank())
+b5 <- ggplot(blob2_cl, aes(V1, V2, colour=cl)) + 
+  geom_point() +
+  scale_color_discrete_divergingx(palette="Zissou 1") +
+  #annotate("text", x=0.05, y=0.95, label="B", size=8) +
+  theme(legend.position = "none", 
+        axis.text = element_blank())
+b6 <- ggplot(blob3_cl, aes(V1, V2, colour=cl)) + 
+  geom_point() +
+  scale_color_discrete_divergingx(palette="Zissou 1") +
+  #annotate("text", x=0.05, y=0.95, label="C", size=8) +
+  theme(legend.position = "none", 
+        axis.text = element_blank())
+
+b7 <- ggplot(blob1_cl, aes(V1, fill=cl)) + 
+  geom_histogram(breaks = seq(0, 1, 0.1)) +
+  scale_fill_discrete_divergingx(palette="Zissou 1") +
+  ylim(c(0,37)) +
+  #annotate("text", x=0.05, y=35, label="A", size=8) +
+  theme(legend.position = "none", 
+        axis.text = element_blank(),
+        axis.title.y = element_blank())
+b8 <- ggplot(blob2_cl, aes(V1, fill=cl)) + 
+  geom_histogram(breaks = seq(0, 1, 0.1)) +
+  scale_fill_discrete_divergingx(palette="Zissou 1") +
+  ylim(c(0,37)) +
+  #annotate("text", x=0.05, y=35, label="B", size=8) +
+  theme(legend.position = "none", 
+        axis.text = element_blank(),
+        axis.title.y = element_blank())
+b9 <- ggplot(blob3_cl, aes(V1, fill=cl)) + 
+  geom_histogram(breaks = seq(0, 1, 0.1)) +
+  scale_fill_discrete_divergingx(palette="Zissou 1") +
+  ylim(c(0,37)) +
+  #annotate("text", x=0.05, y=35, label="C", size=8) +
+  theme(legend.position = "none", 
+        axis.text = element_blank(),
+        axis.title.y = element_blank())
+b10 <- ggplot(blob1_cl, aes(V2, fill=cl)) + 
+  geom_histogram(breaks = seq(0, 1, 0.1)) +
+  scale_fill_discrete_divergingx(palette="Zissou 1") +
+  ylim(c(0,37)) +
+  #annotate("text", x=0.05, y=35, label="A", size=8) +
+  theme(legend.position = "none", 
+        axis.text = element_blank(),
+        axis.title.y = element_blank())
+b11 <- ggplot(blob2_cl, aes(V2, fill=cl)) + 
+  geom_histogram(breaks = seq(0, 1, 0.1)) +
+  scale_fill_discrete_divergingx(palette="Zissou 1") +
+  ylim(c(0,37)) +
+  #annotate("text", x=0.05, y=35, label="B", size=8) +
+  theme(legend.position = "none", 
+        axis.text = element_blank(),
+        axis.title.y = element_blank())
+b12 <- ggplot(blob3_cl, aes(V2, fill=cl)) + 
+  geom_histogram(breaks = seq(0, 1, 0.1)) +
+  scale_fill_discrete_divergingx(palette="Zissou 1") +
+  ylim(c(0,37)) +
+  #annotate("text", x=0.05, y=35, label="C", size=8) +
+  theme(legend.position = "none", 
+        axis.text = element_blank(),
+        axis.title.y = element_blank())
+```
+
+```{r}
+#| echo: false
+#| fig-width: 6
+#| fig-height: 3
+#| out-width: 100%
+b9 + b12 + plot_layout(ncol=2)
+```
+
+*How does this clustering result carve up 2D data? What does the data look like?*
+
+:::
+
+::: {.column}
+::: {.fragment}
+
+<center> *Is it easier now?*</center>
+
+```{r}
+#| echo: false
+#| fig-width: 3
+#| fig-height: 3
+#| out-width: 60%
+b6
+```
+
+Now we can see the clustering has **partitioned** the blob.
+
+:::
+:::
+
+::::
+
+## Try again
+
+:::: {.columns}
+::: {.column}
+
+This is how we tend to visualise cluster results. 
+
+
+```{r}
+#| echo: false
+#| fig-width: 6
+#| fig-height: 3
+#| out-width: 100%
+b7 + b10 + plot_layout(ncol=2)
+```
+
+*How does this clustering result carve up 2D data? What does the data look like?*
+
+:::
+
+::: {.column}
+::: {.fragment}
+<center> *Is it easier now?*</center>
+
+```{r}
+#| echo: false
+#| fig-width: 3
+#| fig-height: 3
+#| out-width: 60%
+b4
+```
+
+Now we can see the clustering has **partitioned** the blob.
+:::
+:::
+
+::::
+
+## Searching for the partitions in high dimensions {.center}
+
+## Example: Risk Taking
+
+:::: {.columns}
+::: {.column}
+- Survey of 563 Australian tourists, see [Dolnicar S, Grün B, Leisch F (2018)](https://link.springer.com/book/10.1007/978-981-10-8818-6)
+- Six different types of risks: recreational, health, career, financial, social and safety
+- Rated on a scale from 1 (never) to 5 (very often)
+
+
+
+:::
+::: {.column}
+
+Step 1: understand the shape of the data 
+
+::: {.f50}
+```{r}
+#| eval: false
+# Step 1: get a sense of the data
+library(lionfish)
+data("risk")
+colnames(risk) <- c("Rec", "Hea", "Car", "Fin", "Saf", "Soc")
+
+animate_xy(risk)
+set.seed(201)
+render_gif(risk,
+           grand_tour(),
+           display_xy(col = "#6C26AC"),
+           start = basis_random(6,2),
+           gif_file = "gifs/risk_gt.gif",
+           apf = 1/20,
+           frames = 400,
+           width = 400,
+           height = 400)
+```
+:::
+
+::: {.panel-tabset}
+
+## shape
+
+::: {layout-ncol=2}
+
+![](images/apple3.jpg)
+
+![](images/banana3.jpg)
+
+:::
+
+## tour
+<center>
+![](gifs/risk_gt.gif)
+</center>
+
+## images
+
+::: {layout-ncol=2}
+
+![](images/risk_gt161.png){width=300}
+
+![](images/risk_gt228.png){width=300}
+
+:::
+
+:::
+:::
+::::
+
+## Software: lionfish
+
+- `R` package to work with implementations of clustering algorithms, and with the `tourr` package to generate tour paths
+- `python` interface to use `TKinter` and `matplotlib` for the GUI and the interactive graphics
+- `matplotlib` enables fast rendering and interactivity for linked brushing and manual tours
+
+## Finding the partitions
+
+:::: {.columns}
+::: {.column width=40%}
+
+1. Run the clustering
+2. Run a guided tour with the LDA index to find projection that best separate clusters
+3. Manual tour to refine view of partitions
+:::
+
+::: {.column width=60%}
+::: {.f50}
+
+```{r}
+#| eval: false
+# Initialise python environment
+init_env()
+
+library(tibble)
+library(dplyr)
+
+risk_d  <- apply(risk, 2, function(x) (x-mean(x))/sd(x))
+
+# Two clusters
+nc <- 3
+set.seed(1145)
+r_km <- kmeans(risk_d, centers=nc,
+               iter.max = 500, nstart = 5)
+
+r_km_d <- risk_d |>
+  as_tibble() |>
+  mutate(cl = factor(r_km$cluster)) |>
+  bind_cols(model.matrix(~ as.factor(r_km$cluster) - 1)) 
+colnames(r_km_d)[(ncol(r_km_d)-nc+1):ncol(r_km_d)] <- paste0("cluster", 1:nc)
+r_km_d <- r_km_d |>
+  mutate_at(vars(contains("cluster")), function(x) x+1)
+
+clusters <- r_km_d$cl
+
+set.seed(110)
+guided_tour_history <- save_history(risk_d,
+    tour_path = guided_tour(lda_pp(clusters)))
+
+half_range <- max(sqrt(rowSums(risk_d^2)))
+feature_names <- colnames(risk_d)
+cluster_names <- LETTERS[1:nc] 
+
+clusters <- as.numeric(as.character(clusters))
+
+obj1 <- list(type="2d_tour", obj=guided_tour_history)
+
+risk_d <- data.matrix(risk_d)
+interactive_tour(data=risk_d,
+                 plot_objects=list(obj1),
+                 feature_names=feature_names,
+                 half_range=half_range,
+                 n_plot_cols=2,
+                 preselection=clusters,
+                 preselection_names=cluster_names,
+                 n_subsets=nc,
+                 display_size=6)
+```
+
+:::
+
+::: {.panel-tabset}
+
+## 2
+
+![](movies/risk_manual_cl2.mov)
+
+## 3
+
+![](movies/risk_manual_cl3.mov)
+
+## 4
+
+![](movies/risk_manual_cl4.mov)
+
+## 5
+
+![](movies/risk_manual_cl5.mov)
+
+:::
+:::
+::::
+
+## [$k=2,3,4,5$-means slices along main spread, and then middle]{.f70}
+
+:::: {.columns}
+::: {.column}
+
+![](images/risk_manual_cl2.png){width=450}
+
+![](images/risk_manual_cl4.png){width=450}
+
+::: 
+::: {.column}
+
+![](images/risk_manual_cl3.png){width=450}
+
+![](images/risk_manual_cl5_2.png){width=450}
+
+:::
+
+::::
+
+## Search for meaning
+
+:::: {.columns}
+
+::: {.column width=80%}
+
+::: {.f50}
+
+```{r}
+#| fig-width: 8
+#| fig-height: 6
+#| out-width: 80%
+library(tibble)
+library(dplyr)
+
+risk_d  <- apply(risk, 2, function(x) (x-mean(x))/sd(x))
+
+# Two clusters
+nc <- 3
+set.seed(1145)
+r_km <- kmeans(risk_d, centers=nc,
+               iter.max = 500, nstart = 5)
+
+r_km_d <- risk |>
+  as_tibble() |>
+  mutate(cl = factor(r_km$cluster))
+
+r_km_d |> 
+  pivot_longer(Rec:Soc, names_to = "var", values_to = "val") |>
+  ggplot(aes(x=val, fill=cl)) +
+    geom_bar() +
+    facet_wrap(~var, ncol=3, scales="free_y") +
+    scale_fill_manual(values = c("#377EB8", "#FF7F00", "#4DAF4A")) +
+    xlab("") + ylab("") +
+    theme_minimal() +
+    theme(legend.position = "none",
+          axis.text = element_blank())
+```
+
+:::
+:::
+::: {.column width=20%}
+
+<br><br>All the activities contribute to the segmentation into three clusters.
+:::
+::::
+
+## Summary
+
+You can find lionfish at https://mmedl94.github.io/lionfish/. 
+
+- Link multiple displays
+- Interactively select points and clusters
+- Visualize the partitions with various tour types
+
+::: {.fragment}
+<br>
+Clustering is a geometric operation and using the tour you should be able to **see how the observations have been grouped**, always.
+:::
+
+::: {.fragment}
+<br> Final teaser: *clustering algorithms don't see gaps, it sees pairwise distances. We see gaps, and can be shocked when the algorithm grouped across it.*
+:::
+
+## References and acknowledgements
+
+::: {style="font-size: 90%;"}
+
+- Medl, Cook, Laa (2025) [Demonstrating the Capabilities of the Lionfish
+Software for Interactive Visualization of Market
+Segmentation Partitions](https://github.com/mmedl94/lionfish_article)
+- Cook and Laa (2025) [Interactively exploring high-dimensional data and models in R](https://dicook.github.io/mulgar_book/)
+- Wickham et al (2015) [Visualizing statistical models: Removing the blindfold](https://doi.org/10.1002/sam.11271)
+- [Flatland: A Romance of Many Dimensions (1884) Edwin Abbott](https://en.wikipedia.org/wiki/Flatland)
+
+Slides made in [Quarto](https://quarto.org/), with code included.  
+
+<a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">Creative Commons Attribution-ShareAlike 4.0 International License</a>.
+:::
