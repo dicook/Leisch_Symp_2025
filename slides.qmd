@@ -18,7 +18,7 @@ message: false
 highlight-style: pygments
 html-math-method: mathml
 code-fold: true
-footer: "Symposium in Memory of Fritz Leisch - https://dicook.github.io/Leisch_Symp_2025/"
+footer: "Symposium in Memory of Fritz Leisch - https://github.com/dicook/Leisch_Symp_2025"
 ---
 
 ```{r, include = FALSE}
