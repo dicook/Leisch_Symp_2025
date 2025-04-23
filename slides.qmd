@@ -87,7 +87,7 @@ Today's work extends it with better algorithms for choosing projections to show,
 ::: {.column width=10%}
 :::
 ::: {.column width=20%}
-![](https://boku.ac.at/fileadmin/_processed_/d/f/csm_FriedrichLeisch_Nachruf_ee94aff500.png)
+![](https://boku.ac.at/fileadmin/_processed_/d/f/csm_FriedrichLeisch_Nachruf_ee94aff500.png){fig-alt="photo of Fritz Leisch"}
 
 :::
 ::::
@@ -116,13 +116,13 @@ Market segmentation tends to be carving a "blob" of data into chunks, using clus
 
 ::: {layout-ncol=3}
 
-![](images/apple1.jpg)
-![](images/apple2.jpg)
-![](images/apple3.jpg)
+![](images/apple1.jpg){fig-alt="Whole apple and knife on cutting board."}
+![](images/apple2.jpg){fig-alt="Apple in two halves and knife on cutting board."}
+![](images/apple3.jpg){fig-alt="Apple sliced into eighths and knife on cutting board."}
 
-![](images/banana1.jpg)
-![](images/banana2.jpg)
-![](images/banana3.jpg)
+![](images/banana1.jpg){fig-alt="Whole banana and knife on cutting board."}
+![](images/banana2.jpg){fig-alt="Banana in half and knife on cutting board."}
+![](images/banana3.jpg){fig-alt="Banana cut into eight coin-shaped pieces and knife on cutting board."}
 
 :::
 :::
@@ -154,9 +154,6 @@ This is how we tend to visualise cluster results.
 
 ```{r}
 #| echo: false
-#| fig-width: 9
-#| fig-height: 3
-#| out-width: 100%
 f_std <- function(x) {(x-min(x))/(max(x)-min(x))}
 set.seed(914)
 blob1 <- rmvnorm(n=155, mean=c(0,0), 
@@ -257,6 +254,7 @@ b12 <- ggplot(blob3_cl, aes(V2, fill=cl)) +
 #| echo: false
 #| fig-width: 6
 #| fig-height: 3
+#| fig-alt: "Side-by-side histograms with x axes labelled 'V1' and 'V2'. Bars are segmented into four colours: red, orange, blue, green. And both histograms roughly have more colour in the bars in that order."
 #| out-width: 100%
 b9 + b12 + plot_layout(ncol=2)
 ```
@@ -274,6 +272,7 @@ b9 + b12 + plot_layout(ncol=2)
 #| echo: false
 #| fig-width: 3
 #| fig-height: 3
+#| fig-alt: "Scatterplot with axes labelled 'V1' and 'V2'. Points are one of four colours: red, orange, blue, green. The points form a strong positive linear association, which is partitioned along this axis into red, orange, blue, green sections."
 #| out-width: 60%
 b6
 ```
@@ -297,6 +296,7 @@ This is how we tend to visualise cluster results.
 #| echo: false
 #| fig-width: 6
 #| fig-height: 3
+#| fig-alt: "Side-by-side histograms with x axes labelled 'V1' and 'V2'. Bars are segmented into four colours: red, orange, blue, green. The order of colours is different in both histograms: red takes medium values on V1 but low values on V2, orange takes moderate values on V1 but high values on V2, blue takes high values on V1 but moderate values on V2 and green takes low values on V1 and moderate values on V2."
 #| out-width: 100%
 b7 + b10 + plot_layout(ncol=2)
 ```
@@ -313,6 +313,7 @@ b7 + b10 + plot_layout(ncol=2)
 #| echo: false
 #| fig-width: 3
 #| fig-height: 3
+#| fig-alt: "Scatterplot with axes labelled 'V1' and 'V2'. Points are one of four colours: red, orange, blue, green. The points form a blob with no association, which is partitioned along into four quadrants of red, orange, blue, green sections."
 #| out-width: 60%
 b4
 ```
